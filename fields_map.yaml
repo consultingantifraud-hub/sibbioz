@@ -1,0 +1,12 @@
+leads:
+  rename:
+    cf_main_phone__f123456: "телефон_основной"
+    cf_inn__f987654: "инн"
+  drop:
+    - cf_неиспользуемое__f111
+contacts:
+  rename: {}
+  drop: []
+companies:
+  rename: {}
+  drop: []
