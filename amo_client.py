@@ -91,9 +91,15 @@ class AmoTokenStore:
             if isinstance(data, dict):
                 embedded = data.get("_embedded")
                 if isinstance(embedded, dict):
-                    for value in embedded.values():
-                        if isinstance(value, list):
-                            batch.extend(value)
+                    key = path.strip("/").split("?")[0]
+                    primary = embedded.get(key)
+                    if isinstance(primary, list):
+                        batch.extend(primary)
+                    else:
+                        for value in embedded.values():
+                            if isinstance(value, list):
+                                batch.extend(value)
+                                break
             elif isinstance(data, list):
                 batch = data
 

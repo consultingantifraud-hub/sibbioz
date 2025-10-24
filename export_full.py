@@ -97,7 +97,8 @@ class StageProgress:
     def update(self, page: int, items_accumulated: int, last_chunk_size: int) -> None:
         if self._progress is not None and self._task_id is not None:
             task = self._progress.tasks[self._task_id]
-            if self.expected_total is None and items_accumulated > (task.total or 0):
+            current_total = task.total or 0
+            if items_accumulated > current_total:
                 self._progress.update(self._task_id, total=items_accumulated)
             completed = min(items_accumulated, self._progress.tasks[self._task_id].total or items_accumulated)
             self._progress.update(
@@ -107,11 +108,14 @@ class StageProgress:
                 page=page,
             )
             if self._status:
-                expected = self.expected_total or "?"
+                task_total = self._progress.tasks[self._task_id].total
+                expected = task_total if task_total else self.expected_total or "?"
+                if isinstance(expected, float) and expected.is_integer():
+                    expected = int(expected)
                 self._status.update(f"{self.name}: страница {page}, {items_accumulated}/{expected}")
         elif self._tqdm is not None:
             bar = self._tqdm
-            if self.expected_total is None and items_accumulated > bar.total:
+            if items_accumulated > bar.total:
                 bar.total = items_accumulated
             bar.set_postfix(page=page)
             delta = items_accumulated - bar.n
@@ -123,6 +127,8 @@ class StageProgress:
     def finalize(self, final_count: int) -> Tuple[float, str]:
         duration = time.perf_counter() - self._start
         expected = self.expected_total or final_count
+        if final_count > expected:
+            expected = final_count
         summary = f"✅ {self.name}: {final_count}/{expected} за {format_duration(duration)}"
         print(summary)
         logger.info(summary)
@@ -1081,8 +1087,9 @@ def run_export(period_days: int = config.PERIOD_DAYS_DEFAULT) -> None:
             except Exception as exc2:
                 logger.warning("Не удалось сопоставить названия сущностей для задач: %s", exc2)
             dfs["Задачи"] = df_tasks
-            logger.info("[OK] Задачи: %s", 0 if df_tasks is None else len(df_tasks))
-            stage.finalize(0 if df_tasks is None else len(df_tasks))
+            final_count = 0 if df_tasks is None else len(df_tasks)
+            logger.info("[OK] Задачи: %s", final_count)
+            stage.finalize(final_count)
     except Exception as exc:
         logger.warning("Не удалось выгрузить задачи: %s", exc)
 
